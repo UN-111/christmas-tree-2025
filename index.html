@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>星光圣诞树 (Final Fix)</title>
+    <title>星光圣诞树 (Ultimate Stable)</title>
     <style>
         /* --- 基础设置 --- */
         body {
@@ -24,15 +24,13 @@
         #start-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 16, 0.95);
+            background: rgba(5, 8, 16, 0.98);
             z-index: 999;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             padding: 20px;
             box-sizing: border-box;
         }
@@ -48,150 +46,76 @@
             cursor: pointer;
             box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
             margin-top: 30px;
-            transition: transform 0.2s, opacity 0.3s;
+            transition: all 0.3s;
+            opacity: 0.5; /* 默认半透明不可点 */
+            pointer-events: none;
         }
-        #start-btn:active { transform: scale(0.95); }
-        #start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #start-btn.ready {
+            opacity: 1;
+            pointer-events: auto;
+            animation: pulse 2s infinite;
+        }
 
-        /* --- 提示框 --- */
-        #safari-hint, #protocol-error {
-            display: none;
-            background: rgba(40, 40, 40, 0.95);
-            border: 1px solid #ff6b6b;
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 20px;
-            max-width: 320px;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        #protocol-error { border-color: #ff4d4d; }
-        #protocol-error h3 { color: #ff4d4d; margin: 0 0 10px 0; }
-        #safari-hint { border-color: #d4af37; }
-        
-        .safari-btn {
-            background: #333; border: 1px solid #888; color: #fff;
-            padding: 10px 20px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-size: 0.9rem;
-        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
         .status-text { color: #fff; line-height: 1.6; margin-bottom: 10px; font-weight: 300; }
-        .error-msg { color: #ff6b6b; font-size: 0.9rem; margin-top: 15px; background: rgba(50,0,0,0.6); padding: 8px; border-radius: 6px; display: none; }
-
-        /* --- UI 布局 --- */
-        #ui-layer {
-            position: absolute;
-            top: env(safe-area-inset-top, 20px);
-            right: 20px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 12px;
-            pointer-events: none;
-            display: none;
+        .error-log { 
+            color: #ff6b6b; font-size: 0.8rem; margin-top: 20px; 
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; 
+            max-width: 90%; word-break: break-all; display: none;
         }
 
+        /* --- UI --- */
+        #ui-layer, #counter-panel, #webcam-preview { display: none; } /* 初始隐藏 */
+        
+        #ui-layer { position: absolute; top: env(safe-area-inset-top, 20px); right: 20px; z-index: 10; display: none; flex-direction: column; align-items: flex-end; gap: 12px; pointer-events: none; }
         .glass-panel, #upload-btn { pointer-events: auto; }
+        
+        #counter-panel { position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; z-index: 10; display: none; padding: 12px 16px; }
 
-        #counter-panel {
-            position: absolute;
-            top: env(safe-area-inset-top, 20px);
-            left: 20px;
-            z-index: 10;
-            padding: 12px 16px;
-            display: none;
-        }
-
-        .glass-panel {
-            background: rgba(30, 40, 60, 0.65);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            border-radius: 16px;
-            color: #fff;
-            transition: all 0.3s;
-            overflow: hidden;
-        }
-
+        .glass-panel { background: rgba(30, 40, 60, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: 16px; color: #fff; transition: all 0.3s; overflow: hidden; }
+        
         #guide-panel { padding: 0 15px; min-width: 160px; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; height: 44px; cursor: pointer; }
-        h1 { margin: 0; font-size: 1rem; color: #ffd700; text-shadow: 0 0 10px rgba(212, 175, 55, 0.4); letter-spacing: 1px; }
+        h1 { margin: 0; font-size: 1rem; color: #ffd700; text-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
         .toggle-icon { color: #aaccff; font-size: 0.8rem; transition: transform 0.3s; }
         .instruction-content { max-height: 400px; opacity: 1; transition: 0.4s ease; margin-bottom: 15px; }
         .glass-panel.collapsed .instruction-content { max-height: 0; opacity: 0; margin-bottom: 0; }
         .glass-panel.collapsed .toggle-icon { transform: rotate(-90deg); }
-
         .instruction-box { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; }
         .instruction { font-size: 0.85rem; color: #e0e6ff; display: flex; align-items: center; gap: 10px; }
         .icon { font-size: 1.4rem; min-width: 28px; text-align: center; }
         .action-highlight { color: #ffe066; font-weight: 600; display: block; }
         .desc { font-size: 0.75rem; color: #9ab; line-height: 1.2; }
 
-        #upload-btn {
-            background: linear-gradient(135deg, #1c3d5a, #2b4c6f);
-            border: 1px solid rgba(160, 200, 255, 0.3);
-            color: #fff; padding: 12px 24px; border-radius: 30px;
-            cursor: pointer; font-weight: 600; font-size: 0.9rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: fit-content;
-        }
+        #upload-btn { background: linear-gradient(135deg, #1c3d5a, #2b4c6f); border: 1px solid rgba(160, 200, 255, 0.3); color: #fff; padding: 12px 24px; border-radius: 30px; cursor: pointer; font-weight: 600; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; }
         #upload-btn.processing { opacity: 0.7; pointer-events: none; }
 
-        #webcam-preview {
-            position: absolute;
-            bottom: max(20px, env(safe-area-inset-bottom));
-            left: 20px;
-            width: 100px; height: 75px;
-            z-index: 10;
-            border-radius: 8px;
-            border: 2px solid rgba(255, 215, 0, 0.4);
-            opacity: 0.7;
-            transform: scaleX(-1);
-            object-fit: cover;
-            background: #000;
-            display: none;
-        }
-
+        #webcam-preview { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 20px; width: 100px; height: 75px; z-index: 10; border-radius: 8px; border: 2px solid rgba(255, 215, 0, 0.4); opacity: 0.7; transform: scaleX(-1); object-fit: cover; background: #000; }
         .counter-text { font-size: 1.3rem; font-weight: bold; color: #aaccff; font-family: monospace; }
         .counter-label { font-size: 0.7rem; color: #8899aa; text-transform: uppercase; }
-
-        @media (max-width: 600px) {
-            h1 { font-size: 0.9rem; }
-            .instruction { font-size: 0.8rem; }
-            .glass-panel { max-width: 220px; }
-            #start-btn { width: 80%; padding: 14px 0; }
-        }
+        
+        #safari-hint { display: none; margin-top: 20px; padding: 10px; border: 1px solid #d4af37; border-radius: 8px; color: #ccc; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
+    <!-- 启动屏幕 -->
     <div id="start-screen">
         <div style="font-size: 3rem; margin-bottom: 20px;">🎄</div>
         <div class="status-text" id="status-msg">
-            <b>星光圣诞树</b><br>资源加载中，请稍候...
+            <b>星光圣诞树</b><br>正在连接服务器 (0%)...
         </div>
         
-        <div id="protocol-error">
-            <h3>⛔️ 环境错误</h3>
-            <div style="font-size:0.85rem; color:#ddd; line-height:1.5;">
-                请勿直接打开本地文件。<br>请部署到服务器并使用 HTTPS 访问。
-            </div>
-        </div>
-
         <div id="safari-hint">
-            <div style="color:#ffda70; margin-bottom:10px; font-weight:bold;">⚠️ 建议使用 Safari</div>
-            <div style="font-size:0.85rem; color:#ccc; line-height:1.5;">
-                iOS 请使用 Safari 打开以确保体验。
-            </div>
-            <button class="safari-btn" onclick="copyUrl()">🔗 复制链接</button>
+            ⚠️ <b>iOS 用户请注意：</b><br>如无法启动，请复制链接在 Safari 浏览器中打开。
         </div>
 
-        <div class="error-msg" id="error-display"></div>
-        <!-- 默认禁用，等待脚本加载完成 -->
-        <button id="start-btn" disabled onclick="window.safeStart()">开启魔法</button>
+        <div class="error-log" id="error-log"></div>
+        <button id="start-btn">等待资源加载</button>
     </div>
 
+    <!-- 主界面 -->
     <div id="counter-panel" class="glass-panel">
         <div class="counter-label">MEMORIES</div>
         <div id="photo-count-display" class="counter-text">0 / 40</div>
@@ -199,7 +123,7 @@
 
     <div id="ui-layer">
         <div class="glass-panel" id="guide-panel">
-            <div class="panel-header" onclick="toggleGuide()">
+            <div class="panel-header" id="guide-toggle">
                 <h1>🌌 星际指南</h1>
                 <span class="toggle-icon">▼</span>
             </div>
@@ -214,13 +138,13 @@
         </div>
         
         <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
-        <button id="upload-btn" onclick="document.getElementById('file-input').click()"><span>✨</span> 上传记忆</button>
+        <button id="upload-btn"><span>✨</span> 上传记忆</button>
     </div>
 
     <video id="webcam-preview" autoplay playsinline webkit-playsinline muted></video>
     <div id="canvas-container"></div>
 
-    <!-- 修复后的 Import Maps: 使用 jsdelivr，兼容性最好 -->
+    <!-- 依赖库配置 -->
     <script type="importmap">
         {
             "imports": {
@@ -234,53 +158,31 @@
     </script>
 
     <script>
-        // 全局占位函数，防止未加载完成时点击报错
-        window.safeStart = function() {
-            alert("系统核心正在启动中，请稍等 2-3 秒...");
+        // --- 全局错误捕获 ---
+        window.onerror = function(msg, url, line) {
+            const log = document.getElementById('error-log');
+            log.style.display = 'block';
+            log.innerHTML = `⚠️ 加载错误: ${msg} <br> (Line: ${line})`;
+            document.getElementById('status-msg').innerHTML = "网络连接不稳定<br>请尝试切换 WiFi/4G 或开启 VPN";
         };
 
-        function checkEnvironment() {
-            if (window.location.protocol === 'file:') {
-                document.getElementById('protocol-error').style.display = 'block';
-                document.getElementById('status-msg').style.display = 'none';
-                return;
-            }
-            const ua = navigator.userAgent;
-            const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            const isSafari = /^((?!chrome|crios|fxios|android).)*safari/i.test(ua);
-            if (isIOS && !isSafari) {
-                document.getElementById('safari-hint').style.display = 'block';
-                document.getElementById('status-msg').style.display = 'none';
-            }
-        }
-
-        function copyUrl() {
-            const url = window.location.href;
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(url).then(() => alert("链接已复制，请去 Safari 打开")).catch(() => prompt("请复制链接", url));
-            } else {
-                prompt("请复制链接", url);
-            }
-        }
-
-        window.onerror = function(msg) {
-            const errDiv = document.getElementById('error-display');
-            errDiv.style.display = 'block';
-            errDiv.innerHTML = `系统错误: ${msg}`;
-            // 发生错误时启用按钮，允许重试
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').innerText = "尝试重启";
-            return false;
-        };
-
-        function toggleGuide() {
+        // --- 简单 UI 逻辑 ---
+        document.getElementById('guide-toggle').onclick = function() {
             document.getElementById('guide-panel').classList.toggle('collapsed');
+        };
+        
+        document.getElementById('upload-btn').onclick = function() {
+            document.getElementById('file-input').click();
         }
 
-        checkEnvironment();
+        // --- iOS 检测 ---
+        if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !/Safari/.test(navigator.userAgent)) {
+            document.getElementById('safari-hint').style.display = 'block';
+        }
     </script>
 
     <script type="module">
+        // 导入模块
         import * as THREE from 'three';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -288,15 +190,44 @@
         import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
         import gsap from 'gsap';
 
-        // 模块加载完成后，启用按钮并覆盖全局函数
+        // --- 资源加载成功，激活按钮 ---
         const startBtn = document.getElementById('start-btn');
         const statusMsg = document.getElementById('status-msg');
         
-        statusMsg.innerHTML = "<b>星光圣诞树</b><br>准备就绪，点击开始";
-        startBtn.disabled = false;
+        statusMsg.innerHTML = "<b>星光圣诞树</b><br>资源就绪，请点击开始";
+        startBtn.innerText = "开启魔法";
+        startBtn.classList.add('ready');
         
-        window.safeStart = startExperience; // 绑定真实入口
+        // 绑定点击事件 (这是最安全的方式)
+        startBtn.onclick = async function() {
+            startBtn.innerText = "正在启动...";
+            startBtn.classList.remove('ready'); // 防止重复点击
+            try {
+                await init();
+                await setupMediaPipe();
+                
+                // 启动成功，切换界面
+                const screen = document.getElementById('start-screen');
+                screen.style.opacity = 0;
+                setTimeout(() => {
+                    screen.style.display = 'none';
+                    document.getElementById('guide-panel').classList.add('collapsed');
+                }, 500);
+                
+                document.getElementById('ui-layer').style.display = 'flex';
+                document.getElementById('counter-panel').style.display = 'block';
+                document.getElementById('webcam-preview').style.display = 'block';
+                
+            } catch (err) {
+                console.error(err);
+                document.getElementById('error-log').style.display = 'block';
+                document.getElementById('error-log').innerHTML = `启动失败: ${err.message}`;
+                startBtn.innerText = "点击重试";
+                startBtn.classList.add('ready');
+            }
+        };
 
+        // --- 核心逻辑 ---
         const CONFIG = {
             colors: { green: 0x2d5a3f, gold: 0xFFD700, red: 0xcc2222, white: 0xFFFFFF },
             particleCount: 550, treeHeight: 45, treeRadius: 16, scatterRadius: 90, maxPhotos: 40 
@@ -316,36 +247,7 @@
         let handStaticCounter = 0;
         let isInitialized = false;
 
-        async function startExperience() {
-            const btn = document.getElementById('start-btn');
-            btn.disabled = true;
-            btn.innerText = "资源加载中...";
-            
-            try {
-                await init();
-                await setupMediaPipe();
-                
-                const startScreen = document.getElementById('start-screen');
-                startScreen.style.opacity = 0;
-                setTimeout(() => {
-                    startScreen.style.display = 'none';
-                    document.getElementById('guide-panel').classList.add('collapsed');
-                }, 500);
-                
-                document.getElementById('ui-layer').style.display = 'flex';
-                document.getElementById('counter-panel').style.display = 'block';
-                document.getElementById('webcam-preview').style.display = 'block';
-                
-            } catch (error) {
-                console.error(error);
-                btn.disabled = false;
-                btn.innerText = "点击重试";
-                const errDiv = document.getElementById('error-display');
-                errDiv.style.display = 'block';
-                errDiv.innerHTML = `启动失败: ${error.message}<br>如果 iOS 卡住，请检查网络 (VPN)`;
-            }
-        };
-
+        // 图片压缩
         function compressImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -372,6 +274,7 @@
             });
         }
 
+        // 生成星芒纹理
         function createLensflareTexture() {
             const cvs = document.createElement('canvas'); cvs.width=128; cvs.height=128;
             const ctx = cvs.getContext('2d');
@@ -414,6 +317,7 @@
             bloomPass.threshold = 0.4; bloomPass.strength = 1.0; bloomPass.radius = 0.6;
             composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
 
+            // 光照调整：移除半球光，增强补光
             const amb = new THREE.AmbientLight(0xffffff, 2.5); scene.add(amb);
             const key = new THREE.SpotLight(0xffeebb, 1000); key.position.set(30,50,60); key.angle=Math.PI/5; key.penumbra=0.5; scene.add(key);
             const fill = new THREE.PointLight(0x6688cc, 1500); fill.position.set(-40,10,20); scene.add(fill);
@@ -429,6 +333,7 @@
             isInitialized = true;
         }
 
+        // --- 3D 对象构建函数 ---
         function createBackgroundStars() {
             const geo = new THREE.BufferGeometry(); const pos=[], col=[];
             for(let i=0; i<1500; i++) {
@@ -479,6 +384,7 @@
             if(sparklesPoints) { group.remove(sparklesPoints); sparklesPoints.geometry.dispose(); }
             const cnt=800, geo=new THREE.BufferGeometry(), pos=[], sizes=[], speeds=[], offs=[];
             for(let i=0; i<cnt; i++) {
+                // 修复：初始化位置移除屏幕
                 pos.push(9999,9999,9999); 
                 sizes.push(2.5+Math.random()*4); speeds.push(3+Math.random()*4); offs.push(Math.random()*Math.PI*2);
             }
@@ -543,6 +449,7 @@
             createSparkleSystem();
         }
 
+        // --- 状态与动画 ---
         function switchState(newState, extra=null) {
             if(currentState===newState && newState!=='photo') return;
             currentState=newState;
@@ -581,20 +488,15 @@
         }
 
         async function setupMediaPipe() {
-            try {
-                // 关键修正：指定 WASM 路径，防止 iOS Safari 加载失败
-                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-                handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                    baseOptions: {modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate:"GPU"},
-                    runningMode:"VIDEO", numHands:1
-                });
-                const v = document.getElementById('webcam-preview');
-                const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
-                v.srcObject = stream; v.play(); v.addEventListener('loadeddata', predictWebcam);
-            } catch (e) {
-                console.warn(e);
-                throw new Error("摄像头启动失败，请检查权限或 HTTPS");
-            }
+            // 明确指定 WASM 路径，解决 iOS 404
+            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                baseOptions: {modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate:"GPU"},
+                runningMode:"VIDEO", numHands:1
+            });
+            const v = document.getElementById('webcam-preview');
+            const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
+            v.srcObject = stream; v.play(); v.addEventListener('loadeddata', predictWebcam);
         }
 
         let lvt=-1;
